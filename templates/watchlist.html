@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Watchlist{% endblock %}
+{% block eyebrow %}Saved stocks{% endblock %}
+{% block page_title %}My watchlist{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h2>Watchlist</h2>
+    <p>Saved stocks and their latest stored closing prices. Entries are persisted in MySQL, so they survive restarts.</p>
+  </div>
+  <button class="btn btn-soft" type="button" id="refreshWatchlist" title="Reload watchlist values from MySQL">
+    <i class="bi bi-arrow-repeat me-1"></i> Reload
+  </button>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form id="watchlistAddForm" class="filter-bar" novalidate>
+      <div class="filter-field grow-2">
+        <label class="form-label" for="watchlistSelect">Add a stock</label>
+        <select class="form-select" id="watchlistSelect"></select>
+      </div>
+      <button class="btn btn-primary" type="submit" id="addWatchlistBtn">
+        <i class="bi bi-star me-1"></i> Add to watchlist
+      </button>
+      <p class="text-muted small mb-0 ms-auto" style="max-width:360px;">
+        Single-user watchlist for this college version. Duplicate entries are prevented by a database constraint.
+      </p>
+    </form>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-4">
+    <div class="card stat-card"><div class="card-body">
+      <div class="stat-top"><span class="stat-label">Watching</span><span class="stat-icon"><i class="bi bi-star"></i></span></div>
+      <div class="stat-value" id="watchlistCount">—</div>
+      <div class="stat-meta">Saved companies</div>
+    </div></div>
+  </div>
+  <div class="col-4">
+    <div class="card stat-card"><div class="card-body">
+      <div class="stat-top"><span class="stat-label">With stored prices</span><span class="stat-icon"><i class="bi bi-database-check"></i></span></div>
+      <div class="stat-value" id="watchlistWithData">—</div>
+      <div class="stat-meta">Latest close available</div>
+    </div></div>
+  </div>
+  <div class="col-4">
+    <div class="card stat-card"><div class="card-body">
+      <div class="stat-top"><span class="stat-label">Latest trade date</span><span class="stat-icon"><i class="bi bi-calendar-check"></i></span></div>
+      <div class="stat-value small" id="watchlistLastDate">—</div>
+      <div class="stat-meta">Across watchlist stocks</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="card position-relative">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title">Saved stocks</h3>
+      <div class="card-subtitle">Latest daily change uses the two most recent stored closes.</div>
+    </div>
+  </div>
+  <div class="table-responsive" id="watchlistTableWrap">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Stock</th>
+          <th>Latest trade date</th>
+          <th class="text-end">Latest close</th>
+          <th class="text-end">Daily change</th>
+          <th>Data</th>
+          <th>Added</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="watchlistTableBody">
+        <tr><td colspan="7" class="text-center text-muted py-4">Loading watchlist…</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="watchlistEmpty" class="data-state d-none">
+    <i class="bi bi-star"></i>
+    <strong>Your watchlist is empty</strong>
+    <p>Choose a stock above and add it. Latest stored prices will appear here automatically.</p>
+  </div>
+  <div class="loading-overlay" id="watchlistLoading">
+    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+    Loading watchlist…
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/watchlist.js') }}"></script>
+{% endblock %}

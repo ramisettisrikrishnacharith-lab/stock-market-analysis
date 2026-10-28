@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Reports & CSV{% endblock %}
+{% block eyebrow %}Exports{% endblock %}
+{% block page_title %}Reports and CSV export{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h2>Historical reports</h2>
+    <p>Filter stored OHLCV records, preview the data and download a CSV generated on the server from real database results.</p>
+  </div>
+  <span id="reportSource" class="source-badge source-unknown">No report loaded</span>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form id="reportFilter" class="filter-bar" novalidate>
+      <div class="filter-field grow-2">
+        <label class="form-label" for="reportStock">Stock</label>
+        <select class="form-select" id="reportStock"></select>
+      </div>
+      <div class="filter-field">
+        <label class="form-label" for="reportStart">Start date</label>
+        <input type="date" class="form-control" id="reportStart" required>
+      </div>
+      <div class="filter-field">
+        <label class="form-label" for="reportEnd">End date</label>
+        <input type="date" class="form-control" id="reportEnd" required>
+      </div>
+      <button class="btn btn-primary" type="submit" id="previewButton">
+        <i class="bi bi-table me-1"></i> Preview
+      </button>
+    </form>
+    <div class="d-flex flex-wrap gap-2 mt-3 align-items-center">
+      <button class="btn btn-soft" type="button" id="exportPrices" disabled>
+        <i class="bi bi-filetype-csv me-1"></i> Export prices CSV
+      </button>
+      <button class="btn btn-soft" type="button" id="exportAnalysis" disabled>
+        <i class="bi bi-filetype-csv me-1"></i> Export analysis CSV
+      </button>
+      <span class="text-muted small ms-auto" id="reportSummary">Load a preview to enable exports.</span>
+    </div>
+  </div>
+</div>
+
+<div id="reportWarning" class="alert alert-warning d-none" role="status"></div>
+
+<div class="card position-relative">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title">Data preview</h3>
+      <div class="card-subtitle" id="reportTableSubtitle">No filters applied yet</div>
+    </div>
+    <div class="ms-auto d-flex align-items-center gap-2">
+      <label class="form-label mb-0" for="reportPerPage">Rows</label>
+      <select class="form-select form-select-sm" id="reportPerPage" style="width:auto;min-height:34px;">
+        <option value="25">25</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
+  </div>
+  <div class="table-responsive" id="reportTableWrap">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Date</th><th class="text-end">Open</th><th class="text-end">High</th>
+          <th class="text-end">Low</th><th class="text-end">Close</th>
+          <th class="text-end">Volume</th><th>Source</th>
+        </tr>
+      </thead>
+      <tbody id="reportTableBody">
+        <tr><td colspan="7" class="text-center text-muted py-4">Choose filters and preview the data.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="reportEmpty" class="data-state d-none">
+    <i class="bi bi-file-earmark-spreadsheet"></i>
+    <strong>No records to preview</strong>
+    <p>Adjust the stock or date range. Exports are only available when records exist.</p>
+  </div>
+  <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2 border-top" style="border-color:var(--border) !important;">
+    <span class="text-muted small" id="reportTableInfo">—</span>
+    <nav aria-label="Report preview pagination">
+      <ul class="pagination pagination-sm mb-0" id="reportPagination"></ul>
+    </nav>
+  </div>
+  <div class="loading-overlay" id="reportLoading">
+    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+    Loading report…
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-body d-flex gap-3">
+    <i class="bi bi-shield-check text-primary fs-5"></i>
+    <div class="methodology">
+      <strong>What the exports contain.</strong>
+      <p class="mb-1 mt-1">The prices CSV contains Date, Open, High, Low, Close, Volume and Data source for every selected record. The analysis CSV contains the calculated summary (average/high/low close, returns, volatility, moving averages) followed by the daily series.</p>
+      <p class="mb-0">Filenames are generated safely on the server. Reports are read from MySQL, not hardcoded examples, and sample rows are labelled as sample data.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/reports.js') }}"></script>
+{% endblock %}

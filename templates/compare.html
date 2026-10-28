@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Compare Stocks{% endblock %}
+{% block eyebrow %}Relative performance{% endblock %}
+{% block page_title %}Compare stocks{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h2>Stock comparison</h2>
+    <p>Compare historical price performance, returns and volatility on a common date range. Normalised values (start = 100) make different price levels comparable.</p>
+  </div>
+  <span id="compareSource" class="source-badge source-unknown">No comparison yet</span>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row g-4">
+      <div class="col-lg-5">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <label class="form-label mb-0">Stocks <span class="text-muted">(2–6)</span></label>
+          <span class="chip" id="selectedCount">0 selected</span>
+        </div>
+        <input type="search" class="form-control form-control-sm mb-2" id="stockSearch" placeholder="Filter by ticker or company…" autocomplete="off">
+        <div class="stock-picker" id="stockPicker">
+          <div class="text-muted small p-3">Loading stocks…</div>
+        </div>
+      </div>
+      <div class="col-lg-7">
+        <form id="compareFilter" novalidate>
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="compareStart">Start date</label>
+              <input type="date" class="form-control" id="compareStart" required>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="compareEnd">End date</label>
+              <input type="date" class="form-control" id="compareEnd" required>
+            </div>
+          </div>
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <button class="btn btn-primary" type="submit" id="compareButton">
+              <i class="bi bi-columns-gap me-1"></i> Compare selected
+            </button>
+            <button class="btn btn-outline-light" type="button" id="clearSelection">
+              <i class="bi bi-x-circle me-1"></i> Clear
+            </button>
+          </div>
+          <p class="text-muted small mt-3 mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            Return statistics use only trading dates shared by every selected stock. The chart forward-fills
+            each stock to the union of dates and starts every series at 100.
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="compareWarning" class="alert alert-warning d-none" role="status"></div>
+
+<div class="card mb-3" id="compareIntro">
+  <div class="card-body data-state">
+    <i class="bi bi-columns-gap"></i>
+    <strong>Choose two or more stocks</strong>
+    <p>Select stocks above, choose a date range and run the comparison. A normalised chart, average volume chart and a full statistics table will appear here.</p>
+  </div>
+</div>
+
+<div id="compareResults" class="d-none">
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">
+      <div class="card stat-card"><div class="card-body">
+        <div class="stat-top"><span class="stat-label">Best period return</span><span class="stat-icon"><i class="bi bi-trophy"></i></span></div>
+        <div class="stat-value small" id="cBest">—</div><div class="stat-meta" id="cBestMeta">—</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card stat-card"><div class="card-body">
+        <div class="stat-top"><span class="stat-label">Weakest return</span><span class="stat-icon"><i class="bi bi-arrow-down-circle"></i></span></div>
+        <div class="stat-value small" id="cWorst">—</div><div class="stat-meta" id="cWorstMeta">—</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card stat-card"><div class="card-body">
+        <div class="stat-top"><span class="stat-label">Common trading dates</span><span class="stat-icon"><i class="bi bi-calendar-check"></i></span></div>
+        <div class="stat-value small" id="cCommon">—</div><div class="stat-meta">Dates traded by every stock</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card stat-card"><div class="card-body">
+        <div class="stat-top"><span class="stat-label">Highest volatility</span><span class="stat-icon"><i class="bi bi-shuffle"></i></span></div>
+        <div class="stat-value small" id="cVolatile">—</div><div class="stat-meta" id="cVolatileMeta">—</div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-xl-8">
+      <div class="card h-100 position-relative">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Relative price performance</h3>
+            <div class="card-subtitle" id="compareChartSubtitle">Normalised to 100 at the first available close</div>
+          </div>
+          <div class="ms-auto segmented" role="group" aria-label="Chart mode">
+            <button type="button" id="normalizedBtn" class="active">Normalised (100)</button>
+            <button type="button" id="rawBtn">Raw close</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap chart-lg">
+            <canvas id="compareChart" role="img" aria-label="Stock comparison chart"></canvas>
+            <div id="compareChartEmpty" class="data-state d-none"></div>
+          </div>
+        </div>
+        <div class="loading-overlay" id="compareLoading">
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          Loading comparison…
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <div><h3 class="card-title">Average daily volume</h3><div class="card-subtitle">On common trading dates</div></div>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap chart-lg">
+            <canvas id="compareVolumeChart" role="img" aria-label="Average volume comparison"></canvas>
+            <div id="compareVolumeEmpty" class="data-state d-none"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Comparison statistics</h3>
+        <div class="card-subtitle" id="compareTableSubtitle">—</div>
+      </div>
+      <span class="ms-auto chip">Historical comparison · not investment advice</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Stock</th>
+            <th class="text-end">Start close</th>
+            <th class="text-end">End close</th>
+            <th class="text-end">Period return</th>
+            <th class="text-end">Avg. daily return</th>
+            <th class="text-end">Volatility</th>
+            <th class="text-end">Avg. volume</th>
+            <th class="text-end">Common obs.</th>
+          </tr>
+        </thead>
+        <tbody id="compareTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div><h3 class="card-title">Methodology and notes</h3><div class="card-subtitle">How these numbers are calculated</div></div></div>
+    <div class="card-body methodology">
+      <div class="row g-4">
+        <div class="col-lg-6">
+          <p class="mb-2"><strong>Normalisation.</strong> Each stock's closing price is divided by its first available close in the selected range and multiplied by 100. A value of 112 means a 12% gain from that starting point, regardless of the original price level.</p>
+          <p class="mb-0"><strong>Different calendars.</strong> The chart uses the union of all trading dates and forward-fills each stock. Statistics use only dates on which every selected stock traded, so returns are not calculated across stale prices.</p>
+        </div>
+        <div class="col-lg-6">
+          <p class="mb-2"><strong>Risk measure.</strong> Volatility is the sample standard deviation (ddof=1) of daily percentage returns on common dates. It is not annualized.</p>
+          <p class="mb-0"><strong>Volumes.</strong> Average volume uses common trading dates. Raw close values may be quoted in different currencies (INR for .NS/.BO, USD for US tickers); normalised performance avoids comparing those raw levels directly.</p>
+        </div>
+      </div>
+      <hr class="hr-soft">
+      <p class="mb-0" id="compareMethodMeta">—</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/compare.js') }}"></script>
+{% endblock %}

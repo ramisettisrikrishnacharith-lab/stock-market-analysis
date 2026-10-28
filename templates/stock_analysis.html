@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Analysis{% endblock %}
+{% block eyebrow %}Deep dive{% endblock %}
+{% block page_title %}Stock analysis{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h2>Historical analysis</h2>
+    <p>Inspect closing-price history, Pandas/NumPy statistics, daily returns, moving averages and volatility for one stock.</p>
+  </div>
+  <span id="analysisSource" class="source-badge source-unknown">Loading source…</span>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form id="analysisFilter" class="filter-bar" novalidate>
+      <div class="filter-field grow-2">
+        <label class="form-label" for="analysisStock">Stock</label>
+        <select class="form-select" id="analysisStock"></select>
+      </div>
+      <div class="filter-field">
+        <label class="form-label" for="analysisStart">Start date</label>
+        <input type="date" class="form-control" id="analysisStart" required>
+      </div>
+      <div class="filter-field">
+        <label class="form-label" for="analysisEnd">End date</label>
+        <input type="date" class="form-control" id="analysisEnd" required>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="submit" id="analyseButton">
+          <i class="bi bi-calculator me-1"></i> Analyse
+        </button>
+        <button class="btn btn-soft" type="button" id="refreshAnalysis">
+          <i class="bi bi-arrow-repeat me-1"></i> Refresh
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="analysisWarning" class="alert alert-warning d-none" role="status"></div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-xl-2">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="stat-top"><span class="stat-label">Tracked stocks</span><span class="stat-icon"><i class="bi bi-buildings"></i></span></div>
+        <div class="stat-value" id="aStatTracked">—</div>
+        <div class="stat-meta">In catalogue</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="stat-top"><span class="stat-label">Latest close</span><span class="stat-icon"><i class="bi bi-cash-stack"></i></span></div>
+        <div class="stat-value small" id="aStatLatest">—</div>
+        <div class="stat-meta" id="aStatLatestMeta">—</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="stat-top"><span class="stat-label">Daily change</span><span class="stat-icon"><i class="bi bi-activity"></i></span></div>
+        <div class="stat-value small" id="aStatChange">—</div>
+        <div class="stat-meta" id="aStatChangeMeta">—</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="stat-top"><span class="stat-label">Period high</span><span class="stat-icon"><i class="bi bi-arrow-up-circle"></i></span></div>
+        <div class="stat-value small" id="aStatHigh">—</div>
+        <div class="stat-meta">Highest closing price</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="stat-top"><span class="stat-label">Period low</span><span class="stat-icon"><i class="bi bi-arrow-down-circle"></i></span></div>
+        <div class="stat-value small" id="aStatLow">—</div>
+        <div class="stat-meta">Lowest closing price</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="stat-top"><span class="stat-label">Avg. volume</span><span class="stat-icon"><i class="bi bi-bar-chart-line"></i></span></div>
+        <div class="stat-value small" id="aStatVolume">—</div>
+        <div class="stat-meta">Average daily volume</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-xl-3">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="stat-top"><span class="stat-label">Period return</span><span class="stat-icon"><i class="bi bi-graph-up-arrow"></i></span></div>
+        <div class="stat-value small" id="aStatReturn">—</div>
+        <div class="stat-meta">First close to latest close</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="stat-top"><span class="stat-label">Volatility</span><span class="stat-icon"><i class="bi bi-shuffle"></i></span></div>
+        <div class="stat-value small" id="aStatVolatility">—</div>
+        <div class="stat-meta">Daily return std. dev.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-xl-8">
+    <div class="card h-100 position-relative">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title">Price and moving averages</h3>
+          <div class="card-subtitle" id="analysisChartSubtitle">Closing price with 20- and 50-day simple moving averages</div>
+        </div>
+        <div class="ms-auto d-flex gap-2 align-items-center flex-wrap">
+          <span class="chip"><span class="legend-dot" style="background:#4f8cff"></span>Close</span>
+          <span class="chip"><span class="legend-dot" style="background:#fbbf24"></span>SMA 20</span>
+          <span class="chip"><span class="legend-dot" style="background:#22d3ee"></span>SMA 50</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="chart-wrap chart-lg">
+          <canvas id="analysisPriceChart" role="img" aria-label="Closing price and moving averages"></canvas>
+          <div id="analysisPriceEmpty" class="data-state d-none"></div>
+        </div>
+      </div>
+      <div class="loading-overlay" id="analysisLoading">
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        Fetching and analysing…
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card h-100">
+      <div class="card-header"><div><h3 class="card-title">Statistical summary</h3><div class="card-subtitle">Pandas + NumPy calculations</div></div></div>
+      <div class="card-body">
+        <dl class="detail-list">
+          <div class="detail-row"><dt>Average close</dt><dd id="aAvgClose">—</dd></div>
+          <div class="detail-row"><dt>Highest close</dt><dd id="aHighClose">—</dd></div>
+          <div class="detail-row"><dt>Lowest close</dt><dd id="aLowClose">—</dd></div>
+          <div class="detail-row"><dt>Highest high</dt><dd id="aHigh">—</dd></div>
+          <div class="detail-row"><dt>Lowest low</dt><dd id="aLow">—</dd></div>
+          <div class="detail-row"><dt>Average volume</dt><dd id="aAvgVolume">—</dd></div>
+          <div class="detail-row"><dt>Observations</dt><dd id="aObservations">—</dd></div>
+          <div class="detail-row"><dt>20-day SMA</dt><dd id="aSma20">—</dd></div>
+          <div class="detail-row"><dt>50-day SMA</dt><dd id="aSma50">—</dd></div>
+          <div class="detail-row"><dt>Avg. daily return</dt><dd id="aAvgReturn">—</dd></div>
+        </dl>
+        <p class="text-muted small mt-3 mb-0">
+          <i class="bi bi-info-circle me-1"></i>
+          Volatility is the sample standard deviation (ddof=1) of daily percentage returns and is
+          <strong>not annualized</strong>. Moving averages stay blank until 20 or 50 observations exist.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title">Daily returns</h3>
+      <div class="card-subtitle">Percentage change from the previous closing price</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="chart-wrap chart-sm">
+      <canvas id="returnsChart" role="img" aria-label="Daily percentage returns"></canvas>
+      <div id="returnsEmpty" class="data-state d-none"></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title">Historical records</h3>
+      <div class="card-subtitle" id="tableSubtitle">Paginated stored OHLCV data</div>
+    </div>
+    <div class="ms-auto d-flex align-items-center gap-2">
+      <label class="form-label mb-0" for="tablePerPage">Rows</label>
+      <select class="form-select form-select-sm" id="tablePerPage" style="width:auto;min-height:34px;">
+        <option value="25" selected>25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Date</th><th class="text-end">Open</th><th class="text-end">High</th>
+          <th class="text-end">Low</th><th class="text-end">Close</th>
+          <th class="text-end">Volume</th><th>Source</th>
+        </tr>
+      </thead>
+      <tbody id="priceTableBody">
+        <tr><td colspan="7" class="text-center text-muted py-4">Loading records…</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2 border-top" style="border-color:var(--border) !important;">
+    <span class="text-muted small" id="tableInfo">—</span>
+    <nav aria-label="Historical records pagination">
+      <ul class="pagination pagination-sm mb-0" id="tablePagination"></ul>
+    </nav>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/stock_analysis.js') }}"></script>
+{% endblock %}

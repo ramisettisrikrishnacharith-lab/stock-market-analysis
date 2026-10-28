@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Error {{ code }}{% endblock %}
+{% block eyebrow %}Something went wrong{% endblock %}
+{% block page_title %}Error {{ code }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-body data-state" style="min-height:340px;">
+    <i class="bi bi-exclamation-octagon"></i>
+    <strong class="fs-5">Error {{ code }}</strong>
+    <p class="mb-4">{{ message }}</p>
+    <div class="d-flex gap-2 justify-content-center">
+      <a class="btn btn-primary" href="{{ url_for('index') }}"><i class="bi bi-house me-1"></i> Dashboard</a>
+      <a class="btn btn-outline-light" href="{{ url_for('reports_page') }}"><i class="bi bi-file-earmark-arrow-down me-1"></i> Reports</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
