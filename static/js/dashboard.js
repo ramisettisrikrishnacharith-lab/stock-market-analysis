@@ -6,7 +6,8 @@
 
   let allStocks = [];
   let activeSymbol = null;
-  
+  const dashboardCache = new Map();
+  let currentAbortController = null;
   
   let loadSequence = 0;
 
@@ -43,6 +44,7 @@
           StockApp.setBusy(demoBtn, true, "Loading demo…");
           const result = await StockApp.api("/api/demo/load", { method: "POST" });
           StockApp.invalidateStocks();
+          dashboardCache.clear();
           StockApp.showAlert(result.message || "Sample demo data loaded successfully.", "success");
           await loadCatalogue();
           if (activeSymbol) {
@@ -167,7 +169,38 @@
 
   async function loadStockDashboard(symbol, forceRefresh = false) {
     if (!symbol) return;
+
+    // Cancel any previous in-flight request before cache check or network fetch
+    if (currentAbortController) {
+      currentAbortController.abort();
+      currentAbortController = null;
+    }
+
+    // Increment sequence number so any in-flight operations cannot update the UI
     const sequence = ++loadSequence;
+
+    // Use cached dashboard data when available and not an explicit refresh
+    if (!forceRefresh && dashboardCache.has(symbol)) {
+      const cached = dashboardCache.get(symbol);
+      StockApp.hideAlert();
+      const loadingOverlay = $("dashboardLoading");
+      if (loadingOverlay) loadingOverlay.classList.add("d-none");
+      StockApp.setPageLoading(false);
+      renderStockDetails(cached);
+      renderMetrics(cached);
+      const warningEl = $("dashboardWarning");
+      if (warningEl) {
+        if (cached.warning) {
+          warningEl.textContent = cached.warning;
+          warningEl.classList.remove("d-none");
+        } else {
+          warningEl.classList.add("d-none");
+        }
+      }
+      return;
+    }
+
+    currentAbortController = new AbortController();
 
     StockApp.hideAlert();
     const loadingOverlay = $("dashboardLoading");
@@ -176,13 +209,15 @@
 
     try {
       const url = `/api/dashboard?symbol=${encodeURIComponent(symbol)}${forceRefresh ? "&refresh=1" : ""}`;
-      const data = await StockApp.api(url);
+      const data = await StockApp.api(url, { signal: currentAbortController.signal });
 
       if (sequence !== loadSequence) return;
 
+      // Cache successful response
+      dashboardCache.set(symbol, data);
+
       renderStockDetails(data);
       renderMetrics(data);
-      
 
       const warningEl = $("dashboardWarning");
       if (warningEl) {
@@ -194,6 +229,9 @@
         }
       }
     } catch (error) {
+      if (error && error.name === "AbortError") {
+        return; // Ignore aborted requests
+      }
       if (sequence !== loadSequence) return;
       StockApp.showAlert(error.message);
       renderEmptyDashboard(symbol, error.message);

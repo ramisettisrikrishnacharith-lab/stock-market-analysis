@@ -251,25 +251,35 @@ def create_app(settings: Settings | None = None) -> Flask:
     @app.get("/api/dashboard")
     def api_dashboard():
         start, end, _ = resolve_range(request.args, settings=cfg)
-        stocks = database.list_stocks(cfg)
-        if not stocks:
-            raise ApiError("No stocks are configured. Run init_db.py first.", 404, "no_stocks")
-
         requested = (request.args.get("symbol") or "").strip().upper()
-        stock = next((item for item in stocks if item["symbol"] == requested), None)
+        refresh = parse_bool(request.args.get("refresh", "false"))
+
+        stock = None
+        if requested:
+            stock = database.get_stock_with_stats_by_symbol(requested, cfg)
+
+        # If no specific symbol was requested or requested stock wasn't found, find default
         if stock is None:
+            stocks = database.list_stocks(cfg)
+            if not stocks:
+                raise ApiError("No stocks are configured. Run init_db.py first.", 404, "no_stocks")
             stock = next((item for item in stocks if item.get("price_count")), stocks[0])
+            total_stocks = len(stocks)
+            tracked_stocks = [_stock_payload(item) for item in stocks]
+        else:
+            total_stocks = database.count_stocks(cfg)
+            tracked_stocks = []
 
         try:
-            result = data_fetcher.ensure_history(stock["symbol"], start, end, settings=cfg)
+            result = data_fetcher.ensure_history(stock["symbol"], start, end, refresh=refresh, settings=cfg)
         except data_fetcher.MarketDataError as exc:
             raise ApiError(exc.message, exc.status, exc.code) from exc
 
         info = analysis.calculate_analysis(result.frame)
         return jsonify({
-            "stocks_count": len(stocks),
+            "stocks_count": total_stocks,
             "watchlist_count": database.count_watchlist(cfg),
-            "tracked_stocks": [_stock_payload(item) for item in stocks],
+            "tracked_stocks": tracked_stocks,
             "stock": _stock_payload(stock),
             "start": start.isoformat(),
             "end": end.isoformat(),

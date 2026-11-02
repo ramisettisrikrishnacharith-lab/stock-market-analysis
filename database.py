@@ -290,6 +290,23 @@ def get_stock_by_symbol(symbol: str, settings: Settings | None = None) -> dict |
     )
 
 
+def get_stock_with_stats_by_symbol(symbol: str, settings: Settings | None = None) -> dict | None:
+    """Fetch a single stock with its price count and last trade date."""
+    return fetch_one(
+        f"""
+        SELECT {_STOCK_COLUMNS},
+               COUNT(p.price_id) AS price_count,
+               MAX(p.trade_date) AS last_trade_date
+        FROM stocks s
+        LEFT JOIN stock_prices p ON p.stock_id = s.stock_id
+        WHERE s.symbol = %s
+        GROUP BY s.stock_id, s.symbol, s.company_name, s.exchange, s.created_at
+        """,
+        (symbol.upper(),),
+        settings,
+    )
+
+
 def get_stock_by_id(stock_id: int, settings: Settings | None = None) -> dict | None:
     return fetch_one(
         f"SELECT {_STOCK_COLUMNS} FROM stocks s WHERE s.stock_id = %s",

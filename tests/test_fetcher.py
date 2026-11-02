@@ -65,3 +65,41 @@ def test_twelve_data_missing_or_placeholder_key():
     with pytest.raises(data_fetcher.MarketDataError) as exc_placeholder:
         data_fetcher._download_twelve_data("AAPL", start, today, "YOUR_API_KEY_HERE", 5)
     assert exc_placeholder.value.code == "missing_api_key"
+
+
+def test_ensure_history_prioritizes_stored_coverage(monkeypatch):
+    """ensure_history must return existing stored data even when Twelve Data API key is configured."""
+    from unittest.mock import MagicMock
+    from config import Settings
+
+    settings = Settings(twelve_data_api_key="mock-key-123")
+    assert settings.has_twelve_data_key is True
+
+    fake_stock = {"stock_id": 1, "symbol": "AAPL", "company_name": "Apple Inc.", "exchange": "NASDAQ"}
+    monkeypatch.setattr("database.get_stock_by_symbol", lambda symbol, cfg: fake_stock)
+    monkeypatch.setattr(
+        "database.get_price_bounds",
+        lambda stock_id, cfg: {"first_date": "2024-01-01", "last_date": "2025-01-01"},
+    )
+
+    mock_stored = data_fetcher.HistoryResult(
+        symbol="AAPL",
+        frame=pd.DataFrame({"close_price": [150.0]}, index=pd.DatetimeIndex(["2024-06-01"])),
+        source="yfinance",
+        is_sample=False,
+    )
+    monkeypatch.setattr("data_fetcher._stored_result", lambda stock, start, end, **kwargs: mock_stored)
+
+    # _download_twelve_data should NOT be called if coverage exists and refresh=False
+    mock_twelve = MagicMock()
+    monkeypatch.setattr("data_fetcher._download_twelve_data", mock_twelve)
+
+    res = data_fetcher.ensure_history(
+        "AAPL",
+        date(2024, 1, 1),
+        date(2025, 1, 1),
+        refresh=False,
+        settings=settings,
+    )
+    assert res == mock_stored
+    mock_twelve.assert_not_called()
