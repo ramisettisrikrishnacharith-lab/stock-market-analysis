@@ -105,6 +105,9 @@
     try {
       response = await fetch(url, opts);
     } catch (error) {
+      if (error && error.name === "AbortError") {
+        throw error;
+      }
       throw new Error("Could not reach the Flask server. Check that app.py is running and try again.");
     }
 

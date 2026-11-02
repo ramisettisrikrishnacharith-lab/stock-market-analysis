@@ -496,11 +496,7 @@ def ensure_history(
         if _has_coverage(bounds, start, end):
             stored = _stored_result(stock, start, end, settings=cfg)
             if stored is not None:
-                # If Twelve Data is configured as the preferred provider, only use
-                # cached data if it was already retrieved from Twelve Data.
-                # If cached rows came from yfinance or sample, proceed to Twelve Data to upgrade.
-                if not cfg.has_twelve_data_key or stored.source == "twelve_data":
-                    return stored
+                return stored
 
     provider_error: MarketDataError | None = None
 
