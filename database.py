@@ -75,6 +75,11 @@ def get_connection(
     if db_name:
         params["database"] = db_name
 
+    if cfg.db_ssl_ca:
+        params["ssl_ca"] = cfg.db_ssl_ca
+        params["ssl_verify_cert"] = True
+        params["ssl_verify_identity"] = True
+
     try:
         return mysql.connector.connect(**params)
     except MySQLError as exc:

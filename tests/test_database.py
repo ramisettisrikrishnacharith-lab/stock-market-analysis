@@ -6,7 +6,10 @@ from datetime import date
 
 import pytest
 
+from unittest.mock import patch
+
 import database
+from config import Settings, load_settings
 
 
 def test_connection_and_schema(db):
@@ -127,3 +130,31 @@ def test_watchlist_add_duplicate_remove(db):
 def test_foreign_key_rejects_unknown_stock(db):
     with pytest.raises(LookupError):
         database.add_to_watchlist(999999, db)
+
+
+def test_ssl_connection_parameters():
+    cfg = Settings(db_ssl_ca="/path/to/aiven-ca.pem")
+    assert cfg.db_ssl_ca == "/path/to/aiven-ca.pem"
+
+    with patch("mysql.connector.connect") as mock_connect:
+        mock_connect.return_value = "mock_conn"
+        conn = database.get_connection(cfg)
+        assert conn == "mock_conn"
+        mock_connect.assert_called_once()
+        kwargs = mock_connect.call_args.kwargs
+        assert kwargs["ssl_ca"] == "/path/to/aiven-ca.pem"
+        assert kwargs["ssl_verify_cert"] is True
+        assert kwargs["ssl_verify_identity"] is True
+
+
+def test_no_ssl_connection_parameters_by_default():
+    cfg = Settings(db_ssl_ca="")
+    with patch("mysql.connector.connect") as mock_connect:
+        mock_connect.return_value = "mock_conn"
+        conn = database.get_connection(cfg)
+        assert conn == "mock_conn"
+        mock_connect.assert_called_once()
+        kwargs = mock_connect.call_args.kwargs
+        assert "ssl_ca" not in kwargs
+        assert "ssl_verify_cert" not in kwargs
+        assert "ssl_verify_identity" not in kwargs

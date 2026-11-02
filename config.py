@@ -43,6 +43,7 @@ class Settings:
     db_user: str = "root"
     db_password: str = ""
     db_name: str = "stock_market_db"
+    db_ssl_ca: str = ""
 
     # Optional administrator credentials used only to CREATE DATABASE.
     # They fall back to the normal application credentials.
@@ -84,6 +85,7 @@ def load_settings(**overrides) -> Settings:
         "db_user": _env("DB_USER", "root"),
         "db_password": os.getenv("DB_PASSWORD", ""),
         "db_name": _env("DB_NAME", "stock_market_db"),
+        "db_ssl_ca": _env("DB_SSL_CA", ""),
         "db_admin_user": _env("DB_ADMIN_USER", ""),
         "db_admin_password": os.getenv("DB_ADMIN_PASSWORD", ""),
         "flask_secret_key": _env("FLASK_SECRET_KEY", "dev-only-secret-change-me"),
