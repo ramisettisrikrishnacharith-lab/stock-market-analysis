@@ -5,3 +5,4 @@ numpy==2.3.4
 yfinance==0.2.66
 python-dotenv==1.1.1
 pytest==8.4.2
+gunicorn
