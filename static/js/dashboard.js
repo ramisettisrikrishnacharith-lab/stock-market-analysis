@@ -170,10 +170,22 @@
   async function loadStockDashboard(symbol, forceRefresh = false) {
     if (!symbol) return;
 
+    // Cancel any previous in-flight request before cache check or network fetch
+    if (currentAbortController) {
+      currentAbortController.abort();
+      currentAbortController = null;
+    }
+
+    // Increment sequence number so any in-flight operations cannot update the UI
+    const sequence = ++loadSequence;
+
     // Use cached dashboard data when available and not an explicit refresh
     if (!forceRefresh && dashboardCache.has(symbol)) {
       const cached = dashboardCache.get(symbol);
       StockApp.hideAlert();
+      const loadingOverlay = $("dashboardLoading");
+      if (loadingOverlay) loadingOverlay.classList.add("d-none");
+      StockApp.setPageLoading(false);
       renderStockDetails(cached);
       renderMetrics(cached);
       const warningEl = $("dashboardWarning");
@@ -188,13 +200,7 @@
       return;
     }
 
-    // Cancel any previous in-flight request
-    if (currentAbortController) {
-      currentAbortController.abort();
-    }
     currentAbortController = new AbortController();
-
-    const sequence = ++loadSequence;
 
     StockApp.hideAlert();
     const loadingOverlay = $("dashboardLoading");
